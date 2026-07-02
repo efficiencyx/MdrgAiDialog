@@ -76,6 +76,7 @@ public class ChatExecutor(ChatManager chatManager, ChatWriter chatWriter) {
             case "SplitMessage":
               chatWriter.Pause();
               await chatWriter.WaitForInput();
+              Tts.TtsManager.Instance.ReleaseBarrier();
               SetEmote("bot", "ArmBoth", "DownNormal");
               chatWriter.Clear();
               chatWriter.Resume();

@@ -44,6 +44,7 @@ public class TtsManager : MonoBehaviour {
   private bool sessionActive = false;
 
   private readonly Queue<Task<WavAudio>> pendingChunks = new();
+  private readonly Queue<TaskCompletionSource<WavAudio>> pendingBarriers = new();
   private CancellationTokenSource cancellation;
 
   private WavAudio currentAudio;
@@ -148,6 +149,38 @@ public class TtsManager : MonoBehaviour {
   }
 
   /// <summary>
+  /// Inserts a barrier into the playback queue at the current text position.
+  /// Audio queued after the barrier stays on hold until <see cref="ReleaseBarrier"/>.
+  /// Used for #!flow.SplitMessage so speech pauses for the user's click
+  /// together with the on-screen text instead of reading ahead
+  /// </summary>
+  public void EnqueueBarrier() {
+    if (!IsEnabled || !sessionActive) {
+      return;
+    }
+
+    // Speak everything that precedes the split before pausing
+    FlushSentence();
+
+    var barrier = new TaskCompletionSource<WavAudio>();
+    pendingBarriers.Enqueue(barrier);
+    pendingChunks.Enqueue(barrier.Task);
+  }
+
+  /// <summary>
+  /// Releases the oldest pending barrier (the split point was passed by the user)
+  /// </summary>
+  public void ReleaseBarrier() {
+    if (config == null || !config.Enabled) {
+      return;
+    }
+
+    if (pendingBarriers.Count > 0) {
+      pendingBarriers.Dequeue().TrySetResult(null);
+    }
+  }
+
+  /// <summary>
   /// Immediately stops playback, cancels in-flight requests and clears the queue
   /// </summary>
   public void StopAll() {
@@ -166,6 +199,11 @@ public class TtsManager : MonoBehaviour {
       // Cancellation races are harmless here
     }
     cancellation = null;
+
+    // Unblock anything waiting on a barrier before dropping the queue
+    while (pendingBarriers.Count > 0) {
+      pendingBarriers.Dequeue().TrySetResult(null);
+    }
 
     pendingChunks.Clear();
 

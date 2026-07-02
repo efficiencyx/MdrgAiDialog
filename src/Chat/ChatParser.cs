@@ -164,6 +164,12 @@ public class ChatParser(ChatWriter writer, ChatExecutor executor) {
         await EnqueueCommand("bot.Expression.Clear");
       }
 
+      if (command == "flow.SplitMessage") {
+        // Hold TTS at the split point too - the executor releases the barrier
+        // once the user clicks past it, so speech never reads ahead of the UI
+        Tts.TtsManager.Instance.EnqueueBarrier();
+      }
+
       await EnqueueCommand(command);
     }
 

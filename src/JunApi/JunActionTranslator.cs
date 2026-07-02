@@ -41,7 +41,7 @@ public class JunActionTranslator {
     ["surprised"] = "#!bot.Expression.VeryShock",
     ["shocked"] = "#!bot.Expression.VeryShock",
     ["embarrassed"] = "#!bot.Expression.VeryBlush",
-    ["neutral"] = "", // ChatParser clears the expression before each new one anyway
+    ["neutral"] = "#!bot.Expression.Clear",
   };
 
   /// <summary>
