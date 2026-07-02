@@ -36,5 +36,6 @@ public class Core : MelonMod {
     MonoSingletonManager.Add<SaveStorage>();
     MonoSingletonManager.Add<ChatManager>();
     MonoSingletonManager.Add<ChatWriter>();
+    MonoSingletonManager.Add<Tts.TtsManager>();
   }
 }

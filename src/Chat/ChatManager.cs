@@ -85,6 +85,7 @@ public class ChatManager : MonoBehaviour {
   [HideFromIl2Cpp]
   public async Task StopChat(bool waitForInput = false) {
     await writer.Stop(waitForInput);
+    Tts.TtsManager.Instance.StopAll();
 
     IsChatActive = false;
     isInConversation = false;
@@ -151,7 +152,8 @@ public class ChatManager : MonoBehaviour {
 
     EnterStoryState();
 
-    // Provider preflight must happen BEFORE warmup (e.g. Ollama model download prompt).
+    // Provider preflight must happen BEFORE warmup (e.g. Ollama model download
+    // prompt, Jun webapp login + server-side history pull).
     // If preflight fails or is rejected, we still open the cha
     var preflightTask = aiAdapter.EnsureReadyForChat();
     while (!preflightTask.IsCompleted) {
@@ -218,10 +220,16 @@ public class ChatManager : MonoBehaviour {
 
     AddToNarrativeLog("You", userInput);
 
+    var tts = Tts.TtsManager.Instance;
+
+    tts.BeginUtterance();
     await parser.Prepare();
     await foreach (var chunk in aiAdapter.SendMessage(userInput)) {
       await parser.Parse(chunk);
     }
+
+    // Speak the trailing partial sentence before waiting for the user's click
+    tts.CompleteUtterance();
     await parser.Flush();
 
     PersistHistoryToSave();
