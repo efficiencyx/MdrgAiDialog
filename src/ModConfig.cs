@@ -66,6 +66,95 @@ By design you are a sex robot, so you are never opposed to engaging in lewd or i
     SetupProvider("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat");
     SetupProvider("Claude", "https://api.anthropic.com/v1", "claude-haiku-4-5");
     SetupProvider("Mock", "", "");
+
+    SetupJun();
+    SetupTts();
+  }
+
+  // Jun Webapp Settings (shared by the "Jun" provider and the TTS client)
+  private static MelonPreferences_Entry<string> junApiUrlEntry;
+  private static MelonPreferences_Entry<string> junEmailEntry;
+  private static MelonPreferences_Entry<string> junPasswordEntry;
+  private static MelonPreferences_Entry<int> junConversationIdEntry;
+  private static MelonPreferences_Entry<string> junModelEntry;
+  private static MelonPreferences_Entry<string> junReasoningEntry;
+  private static MelonPreferences_Entry<int> junTimeoutSecondsEntry;
+
+  private static void SetupJun() {
+    var category = MelonPreferences.CreateCategory("Jun");
+    category.SetFilePath(configPath);
+
+    junApiUrlEntry = category.CreateEntry("ApiUrl", "https://localhost", "Base URL of the Jun webapp (NGINX terminates TLS there)");
+    junEmailEntry = category.CreateEntry("Email", "", "Webapp account email (same account as the web UI)");
+    junPasswordEntry = category.CreateEntry("Password", "", "Webapp account password");
+    junConversationIdEntry = category.CreateEntry("ConversationId", 0, "Conversation to continue (0 = create automatically and remember in the save)");
+    junModelEntry = category.CreateEntry("Model", "", "Model override for chat.php (empty = server default)");
+    junReasoningEntry = category.CreateEntry("Reasoning", "Auto", "Reasoning effort (Auto, Low, Medium, High)");
+    junTimeoutSecondsEntry = category.CreateEntry("TimeoutSeconds", 600, "Timeout in seconds");
+  }
+
+  public static JunApi.JunConfig GetJunConfig() {
+    return new JunApi.JunConfig {
+      ApiUrl = junApiUrlEntry.Value,
+      Email = junEmailEntry.Value,
+      Password = junPasswordEntry.Value,
+      ConversationId = junConversationIdEntry.Value,
+      Model = junModelEntry.Value,
+      Reasoning = junReasoningEntry.Value,
+      TimeoutSeconds = junTimeoutSecondsEntry.Value
+    };
+  }
+
+  // TTS Settings
+  private static MelonPreferences_Entry<bool> ttsEnabledEntry;
+  private static MelonPreferences_Entry<string> ttsApiFormatEntry;
+  private static MelonPreferences_Entry<string> ttsApiUrlEntry;
+  private static MelonPreferences_Entry<string> ttsApiKeyEntry;
+  private static MelonPreferences_Entry<string> ttsModelEntry;
+  private static MelonPreferences_Entry<string> ttsVoiceEntry;
+  private static MelonPreferences_Entry<string> ttsEngineEntry;
+  private static MelonPreferences_Entry<double> ttsSpeedEntry;
+  private static MelonPreferences_Entry<double> ttsVolumeEntry;
+  private static MelonPreferences_Entry<bool> ttsLipSyncEntry;
+  private static MelonPreferences_Entry<double> ttsLipSyncGainEntry;
+  private static MelonPreferences_Entry<int> ttsMaxConcurrentRequestsEntry;
+  private static MelonPreferences_Entry<int> ttsTimeoutSecondsEntry;
+
+  private static void SetupTts() {
+    var category = MelonPreferences.CreateCategory("Tts");
+    category.SetFilePath(configPath);
+
+    ttsEnabledEntry = category.CreateEntry("Enabled", false, "Speak bot replies out loud via a TTS server");
+    ttsApiFormatEntry = category.CreateEntry("ApiFormat", "Jun", "TTS API format: Jun (webapp /api/tts.php, uses [Jun] credentials) or OpenAI ({ApiUrl}/audio/speech)");
+    ttsApiUrlEntry = category.CreateEntry("ApiUrl", "http://localhost:8880/v1", "TTS base URL (OpenAI format only)");
+    ttsApiKeyEntry = category.CreateEntry("ApiKey", "", "API Key (OpenAI format only, optional)");
+    ttsModelEntry = category.CreateEntry("Model", "tts-1", "TTS model name (OpenAI format only)");
+    ttsVoiceEntry = category.CreateEntry("Voice", "af_heart", "Voice name (Kokoro voices like af_heart for the Jun format)");
+    ttsEngineEntry = category.CreateEntry("Engine", "kokoro", "TTS engine for the Jun format (kokoro, pockettts)");
+    ttsSpeedEntry = category.CreateEntry("Speed", 1.0, "Speech speed multiplier", validator: new ValueRange<double>(0.25, 4.0));
+    ttsVolumeEntry = category.CreateEntry("Volume", 0.8, "Playback volume (0.0 - 1.0)", validator: new ValueRange<double>(0.0, 1.0));
+    ttsLipSyncEntry = category.CreateEntry("LipSync", true, "Move the mouth in sync with the audio");
+    ttsLipSyncGainEntry = category.CreateEntry("LipSyncGain", 3.5, "Amplitude-to-mouth gain", validator: new ValueRange<double>(0.1, 20.0));
+    ttsMaxConcurrentRequestsEntry = category.CreateEntry("MaxConcurrentRequests", 2, "How many sentences may generate in parallel", validator: new ValueRange<int>(1, 8));
+    ttsTimeoutSecondsEntry = category.CreateEntry("TimeoutSeconds", 60, "Timeout in seconds");
+  }
+
+  public static Tts.TtsConfig GetTtsConfig() {
+    return new Tts.TtsConfig {
+      Enabled = ttsEnabledEntry.Value,
+      ApiFormat = ttsApiFormatEntry.Value,
+      ApiUrl = ttsApiUrlEntry.Value,
+      ApiKey = ttsApiKeyEntry.Value,
+      Model = ttsModelEntry.Value,
+      Voice = ttsVoiceEntry.Value,
+      Engine = ttsEngineEntry.Value,
+      Speed = ttsSpeedEntry.Value,
+      Volume = ttsVolumeEntry.Value,
+      LipSync = ttsLipSyncEntry.Value,
+      LipSyncGain = ttsLipSyncGainEntry.Value,
+      MaxConcurrentRequests = ttsMaxConcurrentRequestsEntry.Value,
+      TimeoutSeconds = ttsTimeoutSecondsEntry.Value
+    };
   }
 
   private static void SetupProvider(string type, string defaultUrl, string defaultModel) {

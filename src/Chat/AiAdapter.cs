@@ -173,6 +173,7 @@ CRITICAL REMINDERS:
     var config = ModConfig.GetConfigFor(providerName);
 
     return providerName switch {
+      "Jun" => new Jun(config),
       "Ollama" => new Ollama(config),
       "OpenAI" => new OpenAi(config),
       "OpenRouter" => new OpenRouter(config),
