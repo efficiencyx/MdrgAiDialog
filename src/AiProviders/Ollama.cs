@@ -106,7 +106,7 @@ public class Ollama : OpenAi {
 
   private async Task<bool> CheckModelExists() {
     try {
-      var request = new HttpRequestMessage(HttpMethod.Post, "/api/show") {
+      var request = new HttpRequestMessage(HttpMethod.Post, "api/show") {
         Content = new StringContent(
           JsonSerializer.Serialize(new { name = config.Model }),
           Encoding.UTF8,
@@ -124,7 +124,7 @@ public class Ollama : OpenAi {
 
   private async Task DownloadModel(IProgressHandle progress) {
     try {
-      var request = new HttpRequestMessage(HttpMethod.Post, "/api/pull") {
+      var request = new HttpRequestMessage(HttpMethod.Post, "api/pull") {
         Content = new StringContent(
           JsonSerializer.Serialize(new { name = config.Model }),
           Encoding.UTF8,
@@ -170,8 +170,17 @@ public class Ollama : OpenAi {
   }
 
   private string GetBaseOllamaUrl() {
-    var uri = new Uri(config.ApiUrl);
-    return $"{uri.Scheme}://{uri.Authority}";
+    // Ollama's native API (api/show, api/pull) lives one level above the
+    // OpenAI-compatible /v1 endpoint. Strip a trailing "/v1" instead of
+    // taking the bare authority so reverse-proxy path prefixes
+    // (e.g. https://host/ollama/v1) keep working.
+    var url = config.ApiUrl.TrimEnd('/');
+
+    if (url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)) {
+      url = url[..^3];
+    }
+
+    return url.TrimEnd('/') + "/";
   }
 
   private class OllamaStatus {
