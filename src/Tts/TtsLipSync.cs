@@ -3,6 +3,8 @@ using UnityEngine;
 using Il2Cpp;
 using Il2CppLive2D.Cubism.Core;
 using MdrgAiDialog.Utils;
+// Disambiguate from UnityEngine.Logger (both namespaces are imported)
+using Logger = MdrgAiDialog.Utils.Logger;
 
 namespace MdrgAiDialog.Tts;
 

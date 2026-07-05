@@ -67,6 +67,33 @@ public class Ollama : OpenAi {
     return false;
   }
 
+  /// <summary>
+  /// Preloads the model into VRAM by sending a no-op generate request.
+  /// Without this, the first real request triggers a long model-load that
+  /// can time out and softlock the game.
+  /// </summary>
+  public override async Task WarmUp() {
+    if (!modelAvailable) return;
+
+    try {
+      var request = new HttpRequestMessage(HttpMethod.Post, "api/generate") {
+        Content = new StringContent(
+          JsonSerializer.Serialize(new { model = config.Model, prompt = "" }),
+          Encoding.UTF8,
+          "application/json"
+        )
+      };
+
+      // Fire-and-forget the response body — we only need the server to
+      // start loading the model; we don't need to wait for the full reply.
+      var response = await managementClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+      response.Dispose();
+      logger.Log($"Model '{config.Model}' warmup request sent");
+    } catch (Exception ex) {
+      logger.LogWarning($"Warmup failed (non-fatal): {ex.Message}");
+    }
+  }
+
   private async Task<bool> EnsureModelAvailable() {
     if (modelAvailable) {
       return true;

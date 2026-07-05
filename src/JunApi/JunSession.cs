@@ -15,8 +15,8 @@ namespace MdrgAiDialog.JunApi;
 /// The webapp authenticates with an httponly session cookie (omega_session)
 /// obtained from /api/auth.php?action=login. One session is shared by the
 /// chat provider and the TTS client so the game shows up as a single logged-in
-/// user, indistinguishable from the web UI. TLS is terminated by the webapp's
-/// NGINX; this class just speaks HTTPS like any browser would
+/// user. TLS is terminated by the webapp's NGINX, so this class is a plain
+/// HTTPS client
 /// </remarks>
 public class JunSession {
   private static readonly Logger logger = new("JunSession");
@@ -31,6 +31,14 @@ public class JunSession {
       instance ??= new JunSession(ModConfig.GetJunConfig());
       return instance;
     }
+  }
+
+  /// <summary>
+  /// Drops the cached session so the next <see cref="Instance"/> access rebuilds it from the
+  /// current config. Call after the Jun URL/credentials change (e.g. from the settings panel).
+  /// </summary>
+  public static void Reset() {
+    instance = null;
   }
 
   /// <summary>

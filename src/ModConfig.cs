@@ -18,6 +18,19 @@ public static class ModConfig {
   private static MelonPreferences_Category generalCategory;
   private static MelonPreferences_Entry<string> usedProviderEntry;
   private static MelonPreferences_Entry<string> systemPersonaEntry;
+  private static MelonPreferences_Entry<bool> providerConfiguredEntry;
+
+  /// <summary>
+  /// Provider names shown in the first-run picker. Must match the switch in <see cref="Chat.AiAdapter"/>.
+  /// </summary>
+  public static readonly string[] ProviderNames = [
+    "Ollama", "OpenAI", "OpenRouter", "Mistral", "Google", "DeepSeek", "Claude", "Jun", "Mock"
+  ];
+
+  /// <summary>
+  /// False until the user has picked a provider in the first-run GUI (or set it in the config file).
+  /// </summary>
+  public static bool IsProviderConfigured => providerConfiguredEntry.Value;
 
   // Per-Provider Settings Management
   private static readonly Dictionary<string, ProviderSettings> providerSettings = [];
@@ -55,6 +68,12 @@ You have no past memories and are rebuilding your identity. Speak in first perso
 Mirror Anon's attitude: warm if kind, distant if indifferent. Act mostly very human, but show minimal emotion.
 By design you are a sex robot, so you are never opposed to engaging in lewd or indecent activities. You are pretty naughty",
       "System prompt persona/personality text (character background, tone, voice)."
+    );
+
+    providerConfiguredEntry = generalCategory.CreateEntry(
+      "ProviderConfigured",
+      false,
+      "Set automatically once a provider is chosen. Set to false to show the first-run picker again."
     );
 
     // Initialize providers
@@ -132,7 +151,7 @@ By design you are a sex robot, so you are never opposed to engaging in lewd or i
     ttsVoiceEntry = category.CreateEntry("Voice", "af_heart", "Voice name (Kokoro voices like af_heart for the Jun format)");
     ttsEngineEntry = category.CreateEntry("Engine", "kokoro", "TTS engine for the Jun format (kokoro, pockettts)");
     ttsSpeedEntry = category.CreateEntry("Speed", 1.0, "Speech speed multiplier", validator: new ValueRange<double>(0.25, 4.0));
-    ttsVolumeEntry = category.CreateEntry("Volume", 0.8, "Playback volume (0.0 - 1.0)", validator: new ValueRange<double>(0.0, 1.0));
+    ttsVolumeEntry = category.CreateEntry("Volume", 2.5, "Playback gain (1.0 = original level, >1 amplifies quiet TTS)", validator: new ValueRange<double>(0.0, 5.0));
     ttsLipSyncEntry = category.CreateEntry("LipSync", true, "Move the mouth in sync with the audio");
     ttsLipSyncGainEntry = category.CreateEntry("LipSyncGain", 3.5, "Amplitude-to-mouth gain", validator: new ValueRange<double>(0.1, 20.0));
     ttsMaxConcurrentRequestsEntry = category.CreateEntry("MaxConcurrentRequests", 2, "How many sentences may generate in parallel", validator: new ValueRange<int>(1, 8));
@@ -155,6 +174,18 @@ By design you are a sex robot, so you are never opposed to engaging in lewd or i
       MaxConcurrentRequests = ttsMaxConcurrentRequestsEntry.Value,
       TimeoutSeconds = ttsTimeoutSecondsEntry.Value
     };
+  }
+
+  /// <summary>Writes the TTS settings for the Jun webapp voice (pins ApiFormat to the built-in
+  /// Jun endpoint so it reuses the [Jun] session). Called by the Jun settings panel.</summary>
+  public static void SetTtsForJun(bool enabled, string voice, string engine, double speed, double volume, bool lipSync) {
+    ttsEnabledEntry.Value = enabled;
+    ttsApiFormatEntry.Value = "Jun";
+    if (voice != null) ttsVoiceEntry.Value = voice;
+    if (engine != null) ttsEngineEntry.Value = engine;
+    ttsSpeedEntry.Value = speed;
+    ttsVolumeEntry.Value = System.Math.Clamp(volume, 0.0, 5.0);
+    ttsLipSyncEntry.Value = lipSync;
   }
 
   private static void SetupProvider(string type, string defaultUrl, string defaultModel) {
@@ -200,5 +231,91 @@ By design you are a sex robot, so you are never opposed to engaging in lewd or i
     }
 
     return config;
+  }
+
+  // --- Mutators used by the first-run provider picker -------------------------
+
+  /// <summary>Selects the active provider (see <see cref="ProviderNames"/>).</summary>
+  public static void SetUsedProvider(string providerName) {
+    usedProviderEntry.Value = providerName;
+  }
+
+  /// <summary>Writes connection settings for a standard provider. Null values are left untouched.</summary>
+  public static void SetProviderConnection(string providerName, string apiUrl, string apiKey, string model) {
+    if (providerSettings.TryGetValue(providerName, out var settings)) {
+      if (apiUrl != null) settings.ApiUrl.Value = apiUrl;
+      if (apiKey != null) settings.ApiKey.Value = apiKey;
+      if (model != null) settings.Model.Value = model;
+    }
+  }
+
+  /// <summary>Writes connection settings for the Jun webapp provider. Null values are left untouched.</summary>
+  public static void SetJunConnection(string apiUrl, string email, string password) {
+    if (apiUrl != null) junApiUrlEntry.Value = apiUrl;
+    if (email != null) junEmailEntry.Value = email;
+    if (password != null) junPasswordEntry.Value = password;
+  }
+
+  /// <summary>Snapshot of a standard provider's adjustable fields, for the settings UI.</summary>
+  public class ProviderView {
+    public string ApiUrl;
+    public string ApiKey;
+    public string Model;
+    public double Temperature;
+    public int TopK;
+    public string Reasoning;      // Auto / Enabled / Disabled
+    public bool ReasoningPreFill;
+    public int TimeoutSeconds;
+  }
+
+  /// <summary>Reads a standard provider's current settings (null if the name is unknown, e.g. Jun).</summary>
+  public static ProviderView GetProviderView(string providerName) {
+    if (!providerSettings.TryGetValue(providerName, out var s)) {
+      return null;
+    }
+    return new ProviderView {
+      ApiUrl = s.ApiUrl.Value,
+      ApiKey = s.ApiKey.Value,
+      Model = s.Model.Value,
+      Temperature = s.Temperature.Value,
+      TopK = s.TopK.Value,
+      Reasoning = s.ReasoningMode.Value,
+      ReasoningPreFill = s.ReasoningPreFill.Value,
+      TimeoutSeconds = s.TimeoutSeconds.Value
+    };
+  }
+
+  /// <summary>Writes a standard provider's advanced fields. Null values are left untouched.</summary>
+  public static void SetProviderAdvanced(string providerName, double? temperature, int? topK,
+      string reasoning, bool? reasoningPreFill, int? timeoutSeconds) {
+    if (!providerSettings.TryGetValue(providerName, out var s)) {
+      return;
+    }
+    if (temperature.HasValue) s.Temperature.Value = temperature.Value;
+    if (topK.HasValue) s.TopK.Value = topK.Value;
+    if (reasoning != null) s.ReasoningMode.Value = reasoning;
+    if (reasoningPreFill.HasValue) s.ReasoningPreFill.Value = reasoningPreFill.Value;
+    if (timeoutSeconds.HasValue) s.TimeoutSeconds.Value = timeoutSeconds.Value;
+  }
+
+  /// <summary>Reads the Jun webapp provider's current settings for the settings UI.</summary>
+  public static JunApi.JunConfig GetJunView() => GetJunConfig();
+
+  /// <summary>Writes the Jun webapp provider's non-connection fields. Null values are left untouched.</summary>
+  public static void SetJunAdvanced(string model, string reasoning, int? conversationId, int? timeoutSeconds) {
+    if (model != null) junModelEntry.Value = model;
+    if (reasoning != null) junReasoningEntry.Value = reasoning;
+    if (conversationId.HasValue) junConversationIdEntry.Value = conversationId.Value;
+    if (timeoutSeconds.HasValue) junTimeoutSecondsEntry.Value = timeoutSeconds.Value;
+  }
+
+  /// <summary>Marks first-run configuration as done so the picker no longer appears automatically.</summary>
+  public static void MarkProviderConfigured() {
+    providerConfiguredEntry.Value = true;
+  }
+
+  /// <summary>Flushes all categories to <c>MdrgAiDialog.cfg</c>.</summary>
+  public static void Save() {
+    MelonPreferences.Save();
   }
 }

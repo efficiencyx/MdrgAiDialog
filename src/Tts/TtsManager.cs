@@ -7,6 +7,8 @@ using MelonLoader;
 using UnityEngine;
 using Il2CppInterop.Runtime.Attributes;
 using MdrgAiDialog.Utils;
+// Disambiguate from UnityEngine.Logger (both namespaces are imported)
+using Logger = MdrgAiDialog.Utils.Logger;
 
 namespace MdrgAiDialog.Tts;
 
@@ -61,9 +63,26 @@ public class TtsManager : MonoBehaviour {
   /// </summary>
   public void Awake() {
     this.ValidateSingleton();
+    Reload();
+  }
+
+  /// <summary>
+  /// Re-reads the [Tts] config and rebuilds the client. Call after the settings panel
+  /// changes TTS options so a running game picks them up without a restart
+  /// </summary>
+  public void Reload() {
+    // Stop anything the previous config left playing before swapping the client out
+    if (config != null && config.Enabled) {
+      StopAll();
+    }
 
     config = ModConfig.GetTtsConfig();
+    client = null;
+    lipSync = null;
+    concurrencyLimiter = null;
+
     if (!config.Enabled) {
+      logger.Log("TTS disabled");
       return;
     }
 
@@ -292,10 +311,23 @@ public class TtsManager : MonoBehaviour {
       DestroyCurrentClip();
 
       var clip = AudioClip.Create("MdrgAiDialogTts", audio.FrameCount, audio.Channels, audio.SampleRate, false);
-      clip.SetData(audio.Samples, 0);
+
+      // Volume acts as a gain: AudioSource.volume caps at 1.0, which isn't enough headroom
+      // for quiet TTS output, so amplify the PCM directly (clamped to avoid overflow) and
+      // leave the source at unity. The lip-sync reads the untouched original samples
+      var gain = (float)config.Volume;
+      if (Mathf.Abs(gain - 1f) > 0.001f) {
+        var scaled = new float[audio.Samples.Length];
+        for (var i = 0; i < scaled.Length; i++) {
+          scaled[i] = Mathf.Clamp(audio.Samples[i] * gain, -1f, 1f);
+        }
+        clip.SetData(scaled, 0);
+      } else {
+        clip.SetData(audio.Samples, 0);
+      }
 
       audioSource.clip = clip;
-      audioSource.volume = Mathf.Clamp01((float)config.Volume);
+      audioSource.volume = 1f;
       audioSource.Play();
 
       currentAudio = audio;

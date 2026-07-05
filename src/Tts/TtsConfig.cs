@@ -48,7 +48,8 @@ public class TtsConfig {
   public double Speed { get; set; }
 
   /// <summary>
-  /// Playback volume (0.0 - 1.0)
+  /// Playback gain applied to the PCM (1.0 = original level, >1 amplifies quiet TTS,
+  /// clamped to avoid overflow). AudioSource.volume caps at 1.0, hence a sample-level gain
   /// </summary>
   public double Volume { get; set; }
 

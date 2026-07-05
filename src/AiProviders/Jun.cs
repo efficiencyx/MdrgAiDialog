@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -15,15 +16,15 @@ namespace MdrgAiDialog.AiProviders;
 /// AI provider for the Jun webapp stack (PHP proxy + NGINX in front of Ollama)
 /// </summary>
 /// <remarks>
-/// Talks to /api/chat.php exactly like the web UI does, so requests from the game
-/// and the browser are indistinguishable, hit the same rate limits and logging,
-/// and land in the same server-side conversation store. Because chat.php persists
-/// both sides of every exchange, a chat started in the browser or on Telegram
-/// continues seamlessly in-game and vice versa (the shared history is pulled from
-/// /api/conversations.php on every chat start).
+/// Uses the same /api/chat.php endpoint the web UI does, so requests from the
+/// game share the server's rate limits and logging and land in the same
+/// server-side conversation store. chat.php persists both sides of every
+/// exchange, so a chat started in the browser or on Telegram carries on in-game
+/// and back (the history is pulled from /api/conversations.php at the start of
+/// each chat).
 ///
 /// The server injects its own system prompt (and strips any client-sent system
-/// role), so the mod's #!-command instructions do not apply here. Instead, the
+/// role), so the mod's #!-command instructions don't apply here. Instead the
 /// [A:...] action tags the Jun finetune emits are translated to the game's
 /// #!bot.* commands on the fly by <see cref="JunActionTranslator"/>
 /// </remarks>
@@ -224,7 +225,7 @@ public class Jun : AiProvider {
 
   /// <summary>
   /// Replaces local history with the server-side conversation,
-  /// which is the single source of truth shared with web/Telegram
+  /// the copy shared with web/Telegram
   /// </summary>
   private async Task PullServerHistory() {
     try {
