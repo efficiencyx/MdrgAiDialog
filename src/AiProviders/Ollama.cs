@@ -67,6 +67,33 @@ public class Ollama : OpenAi {
     return false;
   }
 
+  /// <summary>
+  /// Preloads the model into VRAM by sending a no-op generate request.
+  /// Without this, the first real request triggers a long model-load that
+  /// can time out and softlock the game.
+  /// </summary>
+  public override async Task WarmUp() {
+    if (!modelAvailable) return;
+
+    try {
+      var request = new HttpRequestMessage(HttpMethod.Post, "api/generate") {
+        Content = new StringContent(
+          JsonSerializer.Serialize(new { model = config.Model, prompt = "" }),
+          Encoding.UTF8,
+          "application/json"
+        )
+      };
+
+      // Fire-and-forget the response body — we only need the server to
+      // start loading the model; we don't need to wait for the full reply.
+      var response = await managementClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+      response.Dispose();
+      logger.Log($"Model '{config.Model}' warmup request sent");
+    } catch (Exception ex) {
+      logger.LogWarning($"Warmup failed (non-fatal): {ex.Message}");
+    }
+  }
+
   private async Task<bool> EnsureModelAvailable() {
     if (modelAvailable) {
       return true;
@@ -106,7 +133,7 @@ public class Ollama : OpenAi {
 
   private async Task<bool> CheckModelExists() {
     try {
-      var request = new HttpRequestMessage(HttpMethod.Post, "/api/show") {
+      var request = new HttpRequestMessage(HttpMethod.Post, "api/show") {
         Content = new StringContent(
           JsonSerializer.Serialize(new { name = config.Model }),
           Encoding.UTF8,
@@ -124,7 +151,7 @@ public class Ollama : OpenAi {
 
   private async Task DownloadModel(IProgressHandle progress) {
     try {
-      var request = new HttpRequestMessage(HttpMethod.Post, "/api/pull") {
+      var request = new HttpRequestMessage(HttpMethod.Post, "api/pull") {
         Content = new StringContent(
           JsonSerializer.Serialize(new { name = config.Model }),
           Encoding.UTF8,
@@ -170,8 +197,17 @@ public class Ollama : OpenAi {
   }
 
   private string GetBaseOllamaUrl() {
-    var uri = new Uri(config.ApiUrl);
-    return $"{uri.Scheme}://{uri.Authority}";
+    // Ollama's native API (api/show, api/pull) lives one level above the
+    // OpenAI-compatible /v1 endpoint. Strip a trailing "/v1" instead of
+    // taking the bare authority so reverse-proxy path prefixes
+    // (e.g. https://host/ollama/v1) keep working.
+    var url = config.ApiUrl.TrimEnd('/');
+
+    if (url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)) {
+      url = url[..^3];
+    }
+
+    return url.TrimEnd('/') + "/";
   }
 
   private class OllamaStatus {

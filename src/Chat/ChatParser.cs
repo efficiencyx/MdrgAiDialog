@@ -54,7 +54,7 @@ public class ChatParser(ChatWriter writer, ChatExecutor executor) {
 
       if (lastWasCarriageReturn && !isNewLine) {
         // Replace carriage return with newline
-        writer.Type("\n");
+        Emit("\n");
         lastWasNewLine = true;
       }
 
@@ -105,7 +105,7 @@ public class ChatParser(ChatWriter writer, ChatExecutor executor) {
           continue;
         }
 
-        writer.Type(currentChar.ToString());
+        Emit(currentChar.ToString());
 
         lastWasWhiteSpace = isWhiteSpace;
         lastWasNewLine = isNewLine;
@@ -138,9 +138,17 @@ public class ChatParser(ChatWriter writer, ChatExecutor executor) {
 
   private void FlushClassificationBuffer() {
     if (classificationBuffer.Length > 0) {
-      writer.Type(classificationBuffer.ToString());
+      Emit(classificationBuffer.ToString());
       classificationBuffer.Clear();
     }
+  }
+
+  /// <summary>
+  /// Sends visible (command-free) text to the writer and mirrors it to the TTS pipeline
+  /// </summary>
+  private void Emit(string text) {
+    writer.Type(text);
+    Tts.TtsManager.Instance.FeedText(text);
   }
 
   private async Task EnqueueCurrentCommand() {
@@ -154,6 +162,12 @@ public class ChatParser(ChatWriter writer, ChatExecutor executor) {
       // Clear facial expression before setting a new one
       if (isExpression) {
         await EnqueueCommand("bot.Expression.Clear");
+      }
+
+      if (command == "flow.SplitMessage") {
+        // Hold TTS at the split point too - the executor releases the barrier
+        // once the user clicks past it, so speech never reads ahead of the UI
+        Tts.TtsManager.Instance.EnqueueBarrier();
       }
 
       await EnqueueCommand(command);

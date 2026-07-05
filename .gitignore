@@ -87,3 +87,7 @@ Icon
 
 # Other:
 *.pem
+
+# Python cache:
+__pycache__/
+*.pyc

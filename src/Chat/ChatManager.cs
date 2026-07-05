@@ -7,6 +7,7 @@ using MelonLoader;
 using Il2Cpp;
 using Il2CppInterop.Runtime.Attributes;
 using MdrgAiDialog.Utils;
+using Logger = MdrgAiDialog.Utils.Logger;
 
 namespace MdrgAiDialog.Chat;
 
@@ -24,22 +25,20 @@ public class ChatManager : MonoBehaviour {
   public bool IsChatActive { get; private set; } = false;
   private bool isInConversation = false;
 
-  private readonly AiAdapter aiAdapter;
+  private AiAdapter aiAdapter;
   private readonly ChatParser parser;
   private readonly ChatWriter writer;
   private readonly ChatExecutor executor;
   private readonly Action<string> processUserInput;
 
   private Il2CppFungus.NarrativeLog narrativeLog;
+  private InputPopup chatPopup;
+  private static readonly Logger logger = new("ChatManager");
 
   private string chatTitle = "Say something to the bot";
-  private readonly string chatDescription = string.Join("\n", [
-    "First request may take a while.",
-    "",
-    "Commands:",
-    "/exit: Force exit the chat (or just say goodbye)",
-    "/reset: Reset bot memory",
-  ]);
+  // Command hints and the paste button are stripped in ConfigureChatPopup, and OK is replaced by
+  // Send + Close, so the body text is left empty.
+  private readonly string chatDescription = "";
 
   /// <summary>
   /// Initializes chat components and handlers
@@ -85,6 +84,7 @@ public class ChatManager : MonoBehaviour {
   [HideFromIl2Cpp]
   public async Task StopChat(bool waitForInput = false) {
     await writer.Stop(waitForInput);
+    Tts.TtsManager.Instance.StopAll();
 
     IsChatActive = false;
     isInConversation = false;
@@ -99,6 +99,17 @@ public class ChatManager : MonoBehaviour {
   public void ResetChat() {
     aiAdapter.ResetChat();
     SaveStorage.Instance.RemoveValue("chat-history");
+  }
+
+  /// <summary>
+  /// Rebuilds the AI provider from the current config and restores persisted history into it.
+  /// Called after the provider is changed at runtime (first-run GUI) so the choice takes effect
+  /// without restarting the game.
+  /// </summary>
+  [HideFromIl2Cpp]
+  public void RebuildAdapter() {
+    aiAdapter = new AiAdapter();
+    ReloadHistoryFromSave();
   }
 
   /// <summary>
@@ -151,7 +162,8 @@ public class ChatManager : MonoBehaviour {
 
     EnterStoryState();
 
-    // Provider preflight must happen BEFORE warmup (e.g. Ollama model download prompt).
+    // Provider preflight must happen BEFORE warmup (e.g. Ollama model download
+    // prompt, Jun webapp login + server-side history pull).
     // If preflight fails or is rejected, we still open the cha
     var preflightTask = aiAdapter.EnsureReadyForChat();
     while (!preflightTask.IsCompleted) {
@@ -165,8 +177,9 @@ public class ChatManager : MonoBehaviour {
       isInConversation = true;
       chatTitle = $"Say something to {gameVariables.botName}";
 
-      // Show input popup
-      uiOverlay.InputPopup(chatTitle, chatDescription, processUserInput);
+      // Show the input popup, then strip the paste button / commands text and swap OK for Send + Close.
+      var popup = uiOverlay.InputPopup(chatTitle, chatDescription, processUserInput);
+      ConfigureChatPopup(popup);
 
       while (isInConversation) {
         // Wait for bot to finish speaking
@@ -216,14 +229,154 @@ public class ChatManager : MonoBehaviour {
       return;
     }
 
-    AddToNarrativeLog("You", userInput);
+    // Start fetching AI response in background immediately while player reads and clicks their echo.
+    // This hides VRAM/loading/network latency completely.
+    var chunksQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
+    var fetchCompletion = new TaskCompletionSource<bool>();
+    var fetchTask = Task.Run(async () => {
+      try {
+        await foreach (var chunk in aiAdapter.SendMessage(userInput)) {
+          chunksQueue.Enqueue(chunk);
+        }
+        fetchCompletion.TrySetResult(true);
+      } catch (Exception ex) {
+        fetchCompletion.TrySetException(ex);
+      }
+    });
 
-    await parser.Prepare();
-    await foreach (var chunk in aiAdapter.SendMessage(userInput)) {
-      await parser.Parse(chunk);
+    // Echo the player's line in the dialogue box, the same way the bot speaks it.
+    await SayPlayerLine(userInput);
+
+    var tts = Tts.TtsManager.Instance;
+    bool prepared = false;
+
+    tts.BeginUtterance();
+    try {
+      await parser.Prepare();
+      prepared = true;
+
+      // Stream the chunks as they arrive from the background thread
+      while (!fetchCompletion.Task.IsCompleted || !chunksQueue.IsEmpty) {
+        if (chunksQueue.TryDequeue(out var chunk)) {
+          await parser.Parse(chunk);
+        } else {
+          // Wait briefly for next chunk
+          await Task.Delay(10);
+        }
+      }
+
+      // Propagate any exceptions from the background fetch
+      if (fetchTask.IsFaulted) {
+        throw fetchTask.Exception.InnerException ?? fetchTask.Exception;
+      }
+
+      // Speak the trailing partial sentence before waiting for the user's click
+      tts.CompleteUtterance();
+      await parser.Flush();
+
+      PersistHistoryToSave();
+    } catch (Exception ex) {
+      logger.LogError($"Error during AI response: {ex.Message}");
+      tts.CompleteUtterance();
+
+      if (prepared) {
+        // Flush writes any partial text to the dialog and unlocks the Writer.
+        // Without this the Writer stays locked and the game softlocks.
+        try { await parser.Flush(); } catch { /* best effort */ }
+      }
     }
-    await parser.Flush();
+  }
 
-    PersistHistoryToSave();
+  /// <summary>
+  /// Reworks the native chat input popup: removes the "Paste from clipboard" button and the
+  /// commands text, and replaces the single OK with a green Send and a red Close button.
+  /// </summary>
+  [HideFromIl2Cpp]
+  private void ConfigureChatPopup(InputPopup popup) {
+    if (popup == null) {
+      return;
+    }
+    chatPopup = popup;
+    try {
+      // Re-open the popup through the game's own choice path so the buttons keep their built-in
+      // close-on-click behavior (ButtonList.InitializeFromPopupChoices did NOT, which softlocked
+      // the modal). PopupStringChoice.Action receives the typed text. Empty body drops the
+      // commands box.
+      var choices = new Il2CppSystem.Collections.Generic.List<PopupStringChoice>();
+      var send = new PopupStringChoice { Text = "Send", Action = new Action<string>(t => ProcessUserInput(t ?? "")) };
+      var close = new PopupStringChoice { Text = "Close", Action = new Action<string>(_ => CloseFromPopup()) };
+      choices.Add(send);
+      choices.Add(close);
+      popup.Open(choices, chatTitle, "", "", Il2CppTMPro.TMP_InputField.ContentType.Standard);
+
+      // Every Open pushes the popup onto UIManager.currentlyOpenPopups (no duplicate check),
+      // so this second Open leaves the same popup on the stack twice. SyncAllPopups walks the
+      // stack top-down and only the first entry keeps its CanvasGroup interactable; the
+      // duplicate entry immediately switches the same popup back to non-interactable, leaving
+      // it visible but deaf to clicks and typing. Drop the duplicate and resync.
+      var uiManager = UIManager.Instance;
+      if (uiManager != null) {
+        uiManager.currentlyOpenPopups.Remove(popup);
+        uiManager.SyncAllPopups();
+      }
+
+      // Remove the "Paste from clipboard" button and the now-empty commands text box.
+      if (popup.pasteFromClipboardButton != null) {
+        popup.pasteFromClipboardButton.gameObject.SetActive(false);
+      }
+      if (popup.textTmp != null) {
+        popup.textTmp.gameObject.SetActive(false);
+      }
+    } catch (Exception ex) {
+      logger.LogError($"Failed to configure chat popup: {ex.Message}");
+    }
+  }
+
+  // Closes the chat entirely (the "Close" button). The native choice already dismisses the popup;
+  // if it is somehow still alive, close it through the game's own path so it is also removed
+  // from UIManager.currentlyOpenPopups (a raw Destroy would leave a stale stack entry that
+  // breaks every popup opened afterwards).
+  private async void CloseFromPopup() {
+    try {
+      if (chatPopup != null) {
+        chatPopup.CloseFromUIOverlay();
+      }
+      await StopChat();
+    } catch (Exception ex) {
+      logger.LogError($"Failed to close chat: {ex.Message}");
+    }
+  }
+
+  /// <summary>
+  /// Shows the player's own message in the game's dialogue box using the same
+  /// conversation path the bot uses for its "..." placeholder. The next
+  /// DoConversation call in parser.Prepare() naturally replaces this one.
+  /// </summary>
+  [HideFromIl2Cpp]
+  private async Task SayPlayerLine(string text) {
+    var tcs = new TaskCompletionSource();
+
+    Action<Il2CppFungus.SayDialog> handler = null;
+    handler = new Action<Il2CppFungus.SayDialog>(dialog => {
+      Il2CppFungus.SayDialogSignals.OnDialogFinished -= handler;
+      tcs.TrySetResult();
+    });
+    Il2CppFungus.SayDialogSignals.OnDialogFinished += handler;
+
+    await MainThreadRunner.Run(() => {
+      var say = Il2CppFungus.SayDialog.GetSayDialog();
+      if (say != null) {
+        var speaker = ConversationSingleton.Instance.GetCharacter("You");
+        if (speaker != null) {
+          say.SetCharacter(speaker);
+        }
+      }
+      ChatWriter.Instance.StartCoroutine(
+        BetterConversationManager.DoConversation($"You: {text}")
+      );
+    });
+
+    // Wait until the user clicks and the player's dialog finishes typing/advancing
+    await tcs.Task;
   }
 }

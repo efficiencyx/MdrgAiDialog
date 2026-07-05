@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
     <!-- Change this to your game path! -->
-    <GamePath>F:\Games\Other\PGs\My Dystopian Robot Girlfriend\0.96</GamePath>
+    <GamePath>/home/andrea/Documenti/factorial-omega-win-64</GamePath>
   </PropertyGroup>
 </Project>

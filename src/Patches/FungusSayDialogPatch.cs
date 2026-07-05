@@ -1,5 +1,6 @@
 using System;
 using HarmonyLib;
+using Il2Cpp;
 using Il2CppFungus;
 using MdrgAiDialog.Chat;
 
