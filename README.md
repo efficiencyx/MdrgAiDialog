@@ -4,6 +4,8 @@
 
 A MelonLoader mod for **My Dystopian Robot Girlfriend** that lets you chat with Jun through an LLM, local or cloud. It can also speak her replies out loud with lipsync, and keep one conversation going across the game, a browser, and Telegram if you run the [Jun webapp stack](https://github.com/efficiencyx/Jun).
 
+**Full documentation:** [docs/README.md](docs/README.md) — installation, configuration reference, providers, architecture, chat pipeline, TTS, Jun/Telegram integration, and development guide.
+
 > **Heads up:** by default the mod expects a local Ollama server at `http://localhost:11434`.
 > If you don't have [Ollama](https://ollama.com/download) running, the default config will give you a connection error.
 
