@@ -25,7 +25,7 @@
    dotnet build -c Release
    ```
 
-   A post-build target copies `MdrgAiDialog.dll` straight into the game's `Mods/` folder. `scripts/install.bat` / `install-and-run.bat` wrap build+copy(+launch) on Windows (edit `GAME_DIR_PATH` inside).
+   A post-build target copies `MdrgAiDialog.dll` straight into the game's `Mods/` folder. The `scripts/install.*` files are user-facing installers; for development, run `dotnet build` directly after setting `GamePath`.
 
 Project properties of note: `net6.0`, nullable disabled, unsafe blocks allowed, deterministic/CI build flags on, version `0.4.0` (also in the `[assembly: MelonInfo]` attribute in `Core.cs`).
 

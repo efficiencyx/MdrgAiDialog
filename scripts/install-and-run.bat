@@ -1,2 +1,5 @@
-@REM Run installation script from the same directory as this batch file
-call "%~dp0install.bat" run
+@echo off
+setlocal
+
+call "%~dp0install.bat" -LaunchGame %*
+exit /b %ERRORLEVEL%

@@ -1,29 +1,19 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-@REM Path to the game executable
-set "GAME_DIR_PATH=F:\Games\Other\PGs\My Dystopian Robot Girlfriend\0.96"
-set "GAME_EXE_PATH=%GAME_DIR_PATH%\My Dystopian Robot Girlfriend.exe"
+set "SCRIPT_DIR=%~dp0"
+set "PS_SCRIPT=%SCRIPT_DIR%install.ps1"
 
-@REM Store current directory
-pushd "%~dp0"
-
-@REM Change to project root directory using script path
-cd "%~dp0.."
-
-@REM Build the project in Release mode
-dotnet build -c Release
-
-@REM Check if build failed
-if errorlevel 1 (
-    echo Build failed
+if not exist "%PS_SCRIPT%" (
+    echo ERROR: Could not find "%PS_SCRIPT%".
     exit /b 1
 )
 
-@REM If run parameter is provided, launch the game
-if "%1"=="run" (
-    start "" "%GAME_EXE_PATH%"
+where powershell.exe >nul 2>nul
+if errorlevel 1 (
+    echo ERROR: Windows PowerShell is required to run this installer.
+    exit /b 1
 )
 
-@REM Return to original directory
-popd
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" %*
+exit /b %ERRORLEVEL%

@@ -11,19 +11,35 @@
 
 The `scripts/` folder contains installers that locate the game, install MelonLoader if missing, download the latest mod DLL into `Mods/`, optionally install Ollama and pull the model, and write the config file.
 
-### Windows — `scripts/install.ps1`
+The installer needs the downloadable desktop game folder from itch.io or another standalone build. The Newgrounds browser version does not expose a local game folder that MelonLoader can patch.
 
-1. Download [`scripts/install.ps1`](../scripts/install.ps1) (right-click → Save link as…).
-2. Right-click the file → **Run with PowerShell**.
-3. Answer the prompts, then start the game and press the chat button.
+If the usual itch.io/manual folders do not contain the game, the installer can ask to scan mounted disks for `My Dystopian Robot Girlfriend.exe` before falling back to manual path entry.
 
-There is also `scripts/install.bat` / `install-and-run.bat` for a fixed, hardcoded-path developer setup (edit `GAME_DIR_PATH` inside).
+### One-line install
 
-### Linux / Steam Deck / Proton — `scripts/install.sh`
+These commands download and execute the installer script. That script then downloads the mod DLL and may install MelonLoader/Ollama depending on your answers. This is convenient, but you should inspect the script first if you have any doubt. It is recommended.
+
+**Windows PowerShell**
+
+```powershell
+irm https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.ps1 | iex
+```
+
+Read it first:
+
+[install.ps1](https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.ps1)
+
+
+**Linux / Steam Deck / WSL**
 
 ```bash
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.sh | bash
 ```
+
+Read it first:
+
+[install.sh](https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.sh)
+
 
 ### Installer options
 

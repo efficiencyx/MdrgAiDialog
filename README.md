@@ -1,164 +1,120 @@
+<div align="center">
+
 # MDRG AI Dialog
 
-**Download:** [Latest Release](https://github.com/StLyn4/MdrgAiDialog/releases)
+**A *My Dystopian Robot Girlfriend* fan mod - give Jun a live AI chat, synced expressions, and an optional voice inside the game.**
 
-A MelonLoader mod for **My Dystopian Robot Girlfriend** that lets you chat with Jun through an LLM, local or cloud. It can also speak her replies out loud with lipsync, and keep one conversation going across the game and browser if you run the [Jun webapp stack](https://github.com/efficiencyx/Jun).
+[![License](https://img.shields.io/badge/license-see%20LICENSE.txt-blue.svg)](LICENSE.txt)
+[![Release](https://img.shields.io/github/v/release/StLyn4/MdrgAiDialog?label=release)](https://github.com/StLyn4/MdrgAiDialog/releases)
+![C#](https://img.shields.io/badge/C%23-.NET%206-512BD4?logo=dotnet&logoColor=white)
+![MelonLoader](https://img.shields.io/badge/MelonLoader-Nightly%200.7.2%2B-f15a24)
+![Ollama](https://img.shields.io/badge/LLM-Ollama-black)
+![Providers](https://img.shields.io/badge/providers-Ollama%20%7C%20OpenAI%20%7C%20OpenRouter%20%7C%20Jun-2f6f4e)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20Steam%20Deck-informational)
 
-**Full documentation:** [docs/README.md](docs/README.md) — installation, configuration reference, providers, architecture, chat pipeline, TTS, Jun integration, and development guide.
+[What it does](#what-it-does) &middot;
+[Get it running](#get-it-running) &middot;
+[Colab](#try-a-free-gpu-on-google-colab) &middot;
+[Providers](#pick-where-the-ai-runs) &middot;
+[Voice](#voice-and-lipsync) &middot;
+[Docs](#documentation)
 
-> **Heads up:** by default the mod expects a local Ollama server at `http://localhost:11434`.
-> If you don't have [Ollama](https://ollama.com/download) running, the default config will give you a connection error.
+</div>
 
-## One-command install
+---
 
-You don't need to touch the command line for this. The installer locates your game, installs MelonLoader and the mod, sets up Ollama, pulls the model, and writes the config for you.
+## So what is this?
 
-**Windows:**
+MDRG AI Dialog is a MelonLoader mod for **My Dystopian Robot Girlfriend**. It adds a **Talk (AI)** flow to the game so you can chat with Jun through a local model, a cloud API, or the self-hosted [Jun webapp stack](https://github.com/efficiencyx/Jun).
 
-1. Download [`scripts/install.ps1`](scripts/install.ps1) (right-click → Save link as...).
-2. Right-click the downloaded file → **Run with PowerShell**.
-3. Answer the prompts. Then start the game and press the chat button.
+The reply is not just dumped into a console. It streams into the game's visual-novel dialog box, can trigger Jun's Live2D expressions as the words arrive, and can be spoken through a TTS server with lipsync.
 
-**Linux / Steam Deck:**
+## ! Warning ! Adult Content
+> This is an unofficial fan mod for an adult game. It is not affiliated with Incontinent Cell or the game team. Use it responsibly and only where the underlying game is legal and appropriate for you.
+
+## What it does
+
+- **She answers inside the game.** The mod uses the game's own input popup and dialog box, so the chat feels like part of the scene instead of a side window.
+- **She reacts while the message streams.** Action commands can change expressions, blush, gestures, and Live2D state at the moment the relevant text appears.
+- **She can talk out loud.** TTS is generated sentence by sentence, so one line can play while the next is still being prepared.
+- **Her mouth follows the audio.** Lipsync drives Jun's Live2D mouth from the speech amplitude.
+- **Your model can live anywhere.** Run Ollama locally, use a free Colab GPU, point at OpenRouter, use OpenAI-compatible APIs, or connect to the Jun webapp stack.
+- **The game and browser can share a conversation.** With the Jun provider, the mod talks to the same server-side conversation system as the web UI.
+- **Setup is not a scavenger hunt.** The installer can find the game, install MelonLoader, download the DLL, configure Ollama or a remote provider, and write the config.
+
+## Get it running
+
+You need the game, MelonLoader Nightly 0.7.2 or newer, and `MdrgAiDialog.dll`. The installers handle most of that.
+
+### The lazy way (one line)
+
+These commands download and execute the installer script. That script then downloads the mod DLL and may install MelonLoader/Ollama depending on your answers. This is convenient, but you should inspect the script first if you have any doubt. It is recommended.
+
+**Windows PowerShell**
+
+```powershell
+irm https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.ps1 | iex
+```
+
+Read it first:
+
+[install.ps1](https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.ps1)
+
+
+**Linux / Steam Deck / WSL**
 
 ```bash
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.sh | bash
 ```
 
-Both scripts accept the same options (`-Flag` on Windows, `--flag` on Linux):
+Read it first:
 
-| Option | What it does |
-|---|---|
-| `-GamePath "C:\...\Game"` | Skip auto-detection of the game folder |
-| `-OllamaUrl "https://xxx.trycloudflare.com/v1" -SkipOllamaInstall -SkipModelPull` | Use a remote/Colab server instead of local Ollama |
-| `-Provider OpenRouter -Model "..." -ApiKey "sk-or-..."` | Use a cloud provider instead of Ollama |
-| `-Provider Jun -ApiUrl "https://your-host" -JunEmail ... -JunPassword ...` | Use the Jun webapp stack (chat + voice + shared history) |
+[install.sh](https://raw.githubusercontent.com/StLyn4/MdrgAiDialog/master/scripts/install.sh)
 
-If you'd rather set it up by hand, that still works. See [Manual installation](#manual-installation-windows).
 
-## Where does the AI run?
+### Manual install
 
-There are four ways to get a model answering, ranging from no setup at all to fully local.
+1. Install [MelonLoader Nightly 0.7.2+](https://github.com/LavaGang/MelonLoader.Installer) for **My Dystopian Robot Girlfriend**.
+2. Run the game once so MelonLoader creates `Mods/`, `UserData/`, and `MelonLoader/`.
+3. Download `MdrgAiDialog.dll` from the [latest release](https://github.com/StLyn4/MdrgAiDialog/releases).
+4. Copy it to `<GameFolder>/Mods/MdrgAiDialog.dll`.
+5. Launch the game and choose a provider in the first-run popup.
 
-### 1. Existing API providers (no GPU needed)
+`<GameFolder>` is the folder that contains `My Dystopian Robot Girlfriend.exe`.
 
-The mod talks to OpenAI-compatible APIs, so it works with OpenAI, Mistral, Google, DeepSeek, Claude, and most other compatible services. All you add is an API key. See [AI providers](#ai-providers) below.
+## Try a free GPU on Google Colab
 
-### 2. OpenRouter
+No local GPU? Use Colab as an Ollama-compatible server and point the mod at its tunnel URL.
 
-One API key gets you a large model catalog, including a decent selection of **free** models.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/StLyn4/MdrgAiDialog/blob/master/colab_ollama_server.ipynb)
 
-```ini
-[General]
-UsedProvider = "OpenRouter"
+1. Open [`colab_ollama_server.ipynb`](colab_ollama_server.ipynb) in Google Colab.
+2. Choose a GPU runtime.
+3. Run all cells and wait for the `https://...trycloudflare.com/v1` URL.
+4. Put that URL in `[Ollama] ApiUrl`, or run the installer with `-OllamaUrl` / `--ollama-url`.
 
-[OpenRouter]
-ApiUrl = "https://openrouter.ai/api/v1"
-ApiKey = "PUT_YOUR_OPENROUTER_KEY_HERE"
-Model = "deepseek/deepseek-r1-0528:free"
-```
+Colab sessions are disposable. If the URL stops working, rerun the notebook and update the config.
 
-### 3. Google Colab (free GPU, no local install)
+## Pick where the AI runs
 
-No decent GPU at home? Run the model on a free Google Colab GPU and point the mod at it over the internet:
-
-1. Open [`colab_ollama_server.ipynb`](colab_ollama_server.ipynb) in [Google Colab](https://colab.research.google.com/).
-2. Click **Runtime → Run all** and wait for the `https://….trycloudflare.com` address.
-3. Put that address into the mod config (the notebook prints the exact snippet), or run the installer with `-OllamaUrl "https://xxx.trycloudflare.com/v1" -SkipOllamaInstall -SkipModelPull`.
-
-Keep the Colab tab open while you play. Free sessions time out after a while; re-run the notebook and update the address when that happens.
-
-### 4. Local Ollama (fully local, free, private)
-
-- **Simplest:** install [Ollama](https://ollama.com/download) and let the installer (or the mod itself, on first chat) download the model.
-- **Docker:** `docker run -d --gpus=all -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama`, then `docker exec -it ollama ollama pull <model>`. The default mod config works as is.
-- Model quality and speed depend on your PC. A modern GPU with 7+ GB VRAM handles the default 12B model at Q4.
-
-## Voice: TTS with lipsync
-
-The mod can speak Jun's replies out loud while she talks, with her mouth moving in sync. Replies are synthesized sentence by sentence as they stream in, so while one sentence plays the next is already generating and you're not waiting for the whole reply.
-
-The easiest setup is the [Jun webapp stack](https://github.com/efficiencyx/Jun), which bundles a CPU-based TTS engine (Kokoro or PocketTTS) behind its PHP proxy and NGINX:
-
-```ini
-[Tts]
-Enabled = true
-ApiFormat = "Jun"      # uses [Jun] ApiUrl + credentials below
-Voice = "af_heart"     # any Kokoro or PocketTTS voice
-Engine = "kokoro"      # or "pockettts"
-```
-
-Any OpenAI-compatible speech endpoint (OpenAI TTS, Kokoro-FastAPI, openedai-speech, AllTalk, ...) works too:
-
-```ini
-[Tts]
-Enabled = true
-ApiFormat = "OpenAI"
-ApiUrl = "http://localhost:8880/v1"
-Model = "tts-1"
-Voice = "af_heart"
-```
-
-Lipsync is on by default (`LipSync = true`). It drives the Live2D mouth parameter from the audio amplitude, the same way the sex-scene moan mod drives the mouth value.
-
-## Jun webapp stack: one conversation across game and browser
-
-If you run the [Jun stack](https://github.com/efficiencyx/Jun) (a Docker bundle: NGINX with TLS, PHP proxy, Ollama, and TTS), the mod can use it as a provider:
-
-```ini
-[General]
-UsedProvider = "Jun"
-
-[Jun]
-ApiUrl = "https://your-host"   # NGINX terminates TLS there; LAN or WAN
-Email = "you@example.com"      # your webapp account
-Password = "..."
-ConversationId = 0             # 0 = create automatically; set an id to share one chat everywhere
-```
-
-What this gets you over plain Ollama:
-
-- **Same brain in both clients.** The game and web UI hit the same server endpoint, get logged and rate-limited the same way, and share one server-side conversation history. Start a chat in-game, continue it in the browser, and back again.
-- **Voice for free.** Set `[Tts] ApiFormat = "Jun"` and the bundled TTS engine runs off the same login.
-- **Live2D reactions.** The Jun finetune's `[A:...]` action tags get translated to in-game expressions (happy/sad/angry/shock/blush...) on the fly.
-- **TLS stays where it belongs.** The mod is a plain HTTPS client; certificates and TLS termination live in the stack's NGINX, not in the mod.
-
-## Requirements
-
-- The game: **My Dystopian Robot Girlfriend**
-- **MelonLoader Nightly 0.7.2+** (the latest nightly build at the time of writing)
-  - Installer: [LavaGang/MelonLoader.Installer](https://github.com/LavaGang/MelonLoader.Installer)
-- This mod: `MdrgAiDialog.dll` (from the Releases page)
-- **Ollama**, only if you use the default/local provider
-  - Download: [ollama.com/download](https://ollama.com/download)
-
-## Manual installation (Windows)
-
-1. **Install MelonLoader (Nightly).**
-   - Download and run the MelonLoader Installer: [LavaGang/MelonLoader.Installer](https://github.com/LavaGang/MelonLoader.Installer)
-   - Select your game and install **Nightly** (0.7.2+).
-2. **Run the game once** so MelonLoader can create its folders.
-3. **Install the mod.**
-   - Download `MdrgAiDialog.dll` from the Releases page.
-   - Copy it to `<GameFolder>\Mods\MdrgAiDialog.dll`.
-4. **Launch the game.**
-
-> **Where is `<GameFolder>`?** The folder that holds `My Dystopian Robot Girlfriend.exe`.
+| Mode | Good for | Notes |
+|---|---|---|
+| **Local Ollama** | Private, free, no API key | Best if you have enough CPU/GPU for the model |
+| **Colab Ollama** | Free GPU test runs | Uses a temporary Cloudflare tunnel |
+| **OpenRouter** | Big model catalog, simple key management | Includes free model options |
+| **OpenAI-compatible APIs** | Cloud quality without local hardware | Works with OpenAI, Mistral, Google, DeepSeek, Claude, and compatible endpoints |
+| **Jun webapp** | Shared game/browser history plus bundled TTS | Uses the same login and conversation stack as [Jun OS](https://github.com/efficiencyx/Jun) |
 
 ## Configuration
 
-The mod uses a single config file, created on first launch:
+The config file is created on first launch:
 
-- `<GameFolder>\UserData\MdrgAiDialog.cfg`
+```text
+<GameFolder>/UserData/MdrgAiDialog.cfg
+```
 
-To edit it:
-
-1. Close the game.
-2. Open `<GameFolder>\UserData\MdrgAiDialog.cfg` in Notepad.
-3. Change `UsedProvider` and the settings for that provider.
-4. Save and launch the game again.
-
-### Minimal config example: Ollama
+<details>
+<summary><b>Local Ollama</b></summary>
 
 ```ini
 [General]
@@ -166,77 +122,166 @@ UsedProvider = "Ollama"
 
 [Ollama]
 ApiUrl = "http://localhost:11434/v1"
-Model = "artifish/llama3.2-uncensored"
+Model = "hf.co/roleplaiapp/MN-12B-Mag-Mell-R1-Q4_K_M-GGUF"
 ```
 
-> **Tip:** the mod checks whether the model exists on your Ollama server. If it's missing, the game offers to download it and shows progress.
->
-> **Reverse proxy note:** `ApiUrl` may include a path prefix (e.g. `https://your-host/ollama/v1`). The model check/download requests respect it.
+</details>
 
-## AI providers
+<details>
+<summary><b>OpenRouter</b></summary>
 
-Pick a provider with `UsedProvider` in `[General]`. The names have to match exactly:
+```ini
+[General]
+UsedProvider = "OpenRouter"
 
-- `Ollama` (default)
-- `Jun` (the [Jun webapp stack](https://github.com/efficiencyx/Jun): chat + voice + shared history)
-- `OpenAI`
-- `OpenRouter`
-- `Mistral`
-- `Google`
-- `DeepSeek`
-- `Claude`
-- `Mock` (for testing)
+[OpenRouter]
+ApiUrl = "https://openrouter.ai/api/v1"
+ApiKey = "sk-or-..."
+Model = "deepseek/deepseek-r1-0528:free"
+```
 
-### Ollama (default, local)
+</details>
 
-- **Default URL:** `http://localhost:11434/v1`
-- **Default model:** `hf.co/roleplaiapp/MN-12B-Mag-Mell-R1-Q4_K_M-GGUF`
-- **If you don't install Ollama:** the mod can't connect with the default settings.
-- **Pros:** local, free, no usage limits.
-- **Cons:** quality and speed depend on your PC, so keep expectations reasonable.
+<details>
+<summary><b>Jun webapp with voice</b></summary>
 
-### OpenAI / OpenAI-compatible providers
+```ini
+[General]
+UsedProvider = "Jun"
 
-The mod uses the OpenAI-compatible endpoints, so it works with the many services that expose that kind of API.
+[Jun]
+ApiUrl = "https://your-host"
+Email = "you@example.com"
+Password = "..."
+ConversationId = 0
 
-To use OpenAI (or a compatible service):
+[Tts]
+Enabled = true
+ApiFormat = "Jun"
+Voice = "af_heart"
+Engine = "kokoro"
+LipSync = true
+```
 
-1. Set `[General] UsedProvider = "OpenAI"`.
-2. Fill in these fields under `[OpenAI]`:
-   - `ApiUrl` (the base URL, usually ending in `/v1`; don't add `/chat/completions`)
-   - `ApiKey` (your key/token)
-   - `Model` (the provider's model name)
+</details>
 
-### Mistral / Google / DeepSeek / Claude
+See [docs/configuration.md](docs/configuration.md) for every setting and default.
 
-These come pre-configured with default API URLs. Usually you only need:
+## Voice and lipsync
 
-- `ApiKey`
-- `Model`
+TTS is optional. When enabled, the mod sends clean sentence chunks to a speech endpoint, queues the WAV replies, plays them in order, and drives Jun's mouth from the audio amplitude.
 
-## Troubleshooting
+| TTS mode | What it uses |
+|---|---|
+| `ApiFormat = "Jun"` | `[Jun] ApiUrl`, `Email`, and `Password`; hits the webapp `/api/tts.php` endpoint |
+| `ApiFormat = "OpenAI"` | `{ApiUrl}/audio/speech`; works with OpenAI TTS and compatible local servers |
 
-- **A connection error right away.**
-  - On `Ollama`: install Ollama and make sure it's running.
-  - Or switch to a cloud provider by setting `[General] UsedProvider = "OpenAI"` (or another) and adding an API key.
-- **Voice doesn't play.**
-  - Check `[Tts] Enabled = true` and that the TTS server is reachable.
-  - With `ApiFormat = "Jun"`, the `[Jun]` `Email`/`Password` have to be valid; TTS uses the same login as chat.
-  - Look for `TtsClient`/`TtsManager` lines in `<GameFolder>\MelonLoader\Latest.log`.
-- **My Colab address stopped working.**
-  - Free Colab sessions expire. Re-run the notebook and update `ApiUrl` (the address changes every run).
-- **Config file is missing.**
-  - Run the game once with MelonLoader installed, then check `<GameFolder>\UserData\`.
-- **Where are the logs?**
-  - `<GameFolder>\MelonLoader\Latest.log`
-- **How do I reset the config?**
-  - Close the game and delete `<GameFolder>\UserData\MdrgAiDialog.cfg`. It gets re-created on the next launch.
+See [docs/tts.md](docs/tts.md) for the full voice pipeline.
 
-## For developers
+## Under the hood
 
-- Install **.NET 6 SDK**.
-- Set your game path:
-  - `Directory.Build.props` (`<GamePath>...</GamePath>`)
-  - (Optional) `scripts\install.bat` (`GAME_DIR_PATH=...`)
-- Build with `dotnet build -c Release`.
-- The project copies the built DLL to the game's `Mods` folder automatically (see `MdrgAiDialog.csproj`).
+```text
+Game UI
+  |-- Talk (AI) button and input popup
+  |-- Fungus dialog writer
+  |-- Live2D expression / mouth control
+
+MdrgAiDialog
+  |-- ChatManager streams replies
+  |-- AiAdapter routes to Ollama, Jun, OpenRouter, OpenAI, Mistral, Google, DeepSeek, Claude, or Mock
+  |-- ChatExecutor applies action commands as text arrives
+  |-- TtsManager queues speech and lipsync
+
+Optional services
+  |-- Ollama local, Colab, or reverse proxy
+  |-- Jun webapp for shared browser/game conversations
+  |-- OpenAI-style TTS server
+```
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [Installation](docs/installation.md) | Installers, manual setup, Steam Deck/Wine notes |
+| [Configuration](docs/configuration.md) | Every `MdrgAiDialog.cfg` option and default |
+| [AI providers](docs/providers.md) | Provider differences and reasoning settings |
+| [Jun webapp](docs/jun-webapp.md) | Shared game/browser conversation setup |
+| [TTS](docs/tts.md) | Voice, sentence pipelining, lipsync |
+| [Architecture](docs/architecture.md) | Component map and data flow |
+| [Chat pipeline](docs/chat-pipeline.md) | Input, streaming, action commands, slash commands |
+| [Development](docs/development.md) | Build from source and add providers |
+
+## When things go sideways
+
+<details>
+<summary><b>Connection error immediately</b></summary>
+
+If you use the default provider, make sure Ollama is installed and running at `http://localhost:11434/v1`. If you use a cloud provider, check `UsedProvider`, `ApiUrl`, `ApiKey`, and `Model`.
+</details>
+
+<details>
+<summary><b>The first-run provider popup is gone</b></summary>
+
+Close the game, open `<GameFolder>/UserData/MdrgAiDialog.cfg`, set `ProviderConfigured = false`, and relaunch. You can also press `F7` in game where the legacy input API is available.
+</details>
+
+<details>
+<summary><b>Voice does not play</b></summary>
+
+Check `[Tts] Enabled = true`, confirm the TTS endpoint is reachable, and look for `TtsClient` / `TtsManager` lines in `<GameFolder>/MelonLoader/Latest.log`.
+</details>
+
+<details>
+<summary><b>The Colab URL stopped working</b></summary>
+
+Free Colab sessions expire and Cloudflare tunnel URLs change. Rerun the notebook and update `[Ollama] ApiUrl`.
+</details>
+
+<details>
+<summary><b>The config is broken or you want to start over</b></summary>
+
+Close the game and delete `<GameFolder>/UserData/MdrgAiDialog.cfg`. It will be recreated on the next launch.
+</details>
+
+## Where everything lives
+
+```text
+.
+|-- src/
+|   |-- Core.cs                 MelonMod entry point
+|   |-- ModConfig.cs            MelonPreferences config
+|   |-- AiProviders/            Ollama, Jun, OpenAI, OpenRouter, Mistral, Google, DeepSeek, Claude, Mock
+|   |-- Chat/                   Input, streaming, parser, writer, action execution
+|   |-- Tts/                    Speech requests, WAV playback, lipsync
+|   |-- JunApi/                 Jun webapp auth, chat, TTS, action translation
+|   |-- Ui/                     First-run provider picker and settings panels
+|   |-- Patches/                Harmony patches into the game
+|   `-- Utils/                  Event bus, save storage, main-thread runner, logging
+|-- docs/                       Full user and developer docs
+|-- scripts/                    Windows, Linux, and developer installers
+|-- colab_ollama_server.ipynb   Free-GPU Ollama endpoint for the mod
+|-- MdrgAiDialog.csproj         .NET 6 project
+`-- Directory.Build.props       Local game path for builds
+```
+
+## Build from source
+
+Install the .NET 6 SDK, install MelonLoader into the game, and point `Directory.Build.props` at your game folder.
+
+```powershell
+dotnet build -c Release
+```
+
+After a successful build, the project copies `MdrgAiDialog.dll` into the game's `Mods` folder.
+
+## Standing on the shoulders of
+
+- [MelonLoader](https://github.com/LavaGang/MelonLoader) for Unity mod loading
+- [Harmony](https://github.com/pardeike/Harmony) for runtime patching
+- [Ollama](https://ollama.com/) for local LLM inference
+- [OpenRouter](https://openrouter.ai/) and OpenAI-compatible APIs for cloud models
+- [Jun OS](https://github.com/efficiencyx/Jun) for the shared webapp/TTS stack
+
+## License
+
+See [LICENSE.txt](LICENSE.txt). This is an unofficial fan project; all rights to the game and its characters belong to their respective owners.
