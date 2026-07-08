@@ -2,9 +2,9 @@
 
 **Download:** [Latest Release](https://github.com/StLyn4/MdrgAiDialog/releases)
 
-A MelonLoader mod for **My Dystopian Robot Girlfriend** that lets you chat with Jun through an LLM, local or cloud. It can also speak her replies out loud with lipsync, and keep one conversation going across the game, a browser, and Telegram if you run the [Jun webapp stack](https://github.com/efficiencyx/Jun).
+A MelonLoader mod for **My Dystopian Robot Girlfriend** that lets you chat with Jun through an LLM, local or cloud. It can also speak her replies out loud with lipsync, and keep one conversation going across the game and browser if you run the [Jun webapp stack](https://github.com/efficiencyx/Jun).
 
-**Full documentation:** [docs/README.md](docs/README.md) — installation, configuration reference, providers, architecture, chat pipeline, TTS, Jun/Telegram integration, and development guide.
+**Full documentation:** [docs/README.md](docs/README.md) — installation, configuration reference, providers, architecture, chat pipeline, TTS, Jun integration, and development guide.
 
 > **Heads up:** by default the mod expects a local Ollama server at `http://localhost:11434`.
 > If you don't have [Ollama](https://ollama.com/download) running, the default config will give you a connection error.
@@ -78,13 +78,13 @@ Keep the Colab tab open while you play. Free sessions time out after a while; re
 
 The mod can speak Jun's replies out loud while she talks, with her mouth moving in sync. Replies are synthesized sentence by sentence as they stream in, so while one sentence plays the next is already generating and you're not waiting for the whole reply.
 
-The easiest setup is the [Jun webapp stack](https://github.com/efficiencyx/Jun), which bundles a CPU-based TTS engine (Kokoro) behind its PHP proxy and NGINX:
+The easiest setup is the [Jun webapp stack](https://github.com/efficiencyx/Jun), which bundles a CPU-based TTS engine (Kokoro or PocketTTS) behind its PHP proxy and NGINX:
 
 ```ini
 [Tts]
 Enabled = true
 ApiFormat = "Jun"      # uses [Jun] ApiUrl + credentials below
-Voice = "af_heart"     # any Kokoro voice
+Voice = "af_heart"     # any Kokoro or PocketTTS voice
 Engine = "kokoro"      # or "pockettts"
 ```
 
@@ -101,7 +101,7 @@ Voice = "af_heart"
 
 Lipsync is on by default (`LipSync = true`). It drives the Live2D mouth parameter from the audio amplitude, the same way the sex-scene moan mod drives the mouth value.
 
-## Jun webapp stack: one conversation everywhere
+## Jun webapp stack: one conversation across game and browser
 
 If you run the [Jun stack](https://github.com/efficiencyx/Jun) (a Docker bundle: NGINX with TLS, PHP proxy, Ollama, and TTS), the mod can use it as a provider:
 
@@ -118,12 +118,10 @@ ConversationId = 0             # 0 = create automatically; set an id to share on
 
 What this gets you over plain Ollama:
 
-- **Same brain everywhere.** The game, the web UI, and the Telegram bridge all hit the same server endpoint, get logged and rate-limited the same way, and share one server-side conversation history. Start a chat in-game, continue it in the browser or on Telegram, and back again.
+- **Same brain in both clients.** The game and web UI hit the same server endpoint, get logged and rate-limited the same way, and share one server-side conversation history. Start a chat in-game, continue it in the browser, and back again.
 - **Voice for free.** Set `[Tts] ApiFormat = "Jun"` and the bundled TTS engine runs off the same login.
 - **Live2D reactions.** The Jun finetune's `[A:...]` action tags get translated to in-game expressions (happy/sad/angry/shock/blush...) on the fly.
 - **TLS stays where it belongs.** The mod is a plain HTTPS client; certificates and TLS termination live in the stack's NGINX, not in the mod.
-
-For the Telegram bridge, see [`server/telegram-bot/`](server/telegram-bot/).
 
 ## Requirements
 

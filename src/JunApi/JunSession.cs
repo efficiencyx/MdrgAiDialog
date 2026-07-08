@@ -30,6 +30,7 @@ public class JunSession {
   // Drops the cached session so the next Instance rebuilds from current config
   // (call after the Jun URL/credentials change, e.g. from the settings panel)
   public static void Reset() {
+    instance?.Client.Dispose();
     instance = null;
   }
 

@@ -81,8 +81,8 @@ TimeoutSeconds = 600
 | Key | Default | Meaning |
 |---|---|---|
 | `ApiUrl` | `https://localhost` | Base URL of the Jun webapp (NGINX terminates TLS there). Endpoints used: `/api/auth.php`, `/api/chat.php`, `/api/conversations.php`, `/api/tts.php`, `/api/models.php`. |
-| `Email` / `Password` | empty | Webapp account credentials — the same login the web UI and Telegram bridge use. |
-| `ConversationId` | `0` | Server-side conversation to continue. `0` = create one on first chat and remember it in the game save. Set a fixed id to share one conversation across game / browser / Telegram. |
+| `Email` / `Password` | empty | Webapp account credentials — the same login the web UI uses. |
+| `ConversationId` | `0` | Server-side conversation to continue. `0` = create one on first chat and remember it in the game save. Set a fixed id to share one conversation across game / browser. |
 | `Model` | empty | Model override forwarded to `chat.php`; empty = server default. |
 | `Reasoning` | `Auto` | Reasoning effort forwarded to `chat.php`: `Auto`, `Low`, `Medium`, `High`. |
 | `TimeoutSeconds` | `600` | HTTP request timeout. |

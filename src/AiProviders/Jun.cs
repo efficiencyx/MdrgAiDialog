@@ -19,7 +19,7 @@ namespace MdrgAiDialog.AiProviders;
 /// Uses the same /api/chat.php endpoint the web UI does, so requests from the
 /// game share the server's rate limits and logging and land in the same
 /// server-side conversation store. chat.php persists both sides of every
-/// exchange, so a chat started in the browser or on Telegram carries on in-game
+/// exchange, so a chat started in the browser carries on in-game
 /// and back (the history is pulled from /api/conversations.php at the start of
 /// each chat).
 ///
@@ -177,7 +177,7 @@ public class Jun : AiProvider {
   }
 
   private async Task<bool> EnsureConversation() {
-    // Explicit id from the config wins (lets game/web/Telegram share one chat)
+    // Explicit id from the config wins (lets game/web share one chat)
     var configuredId = session.Config.ConversationId;
     var candidateId = configuredId > 0
       ? configuredId
@@ -225,7 +225,7 @@ public class Jun : AiProvider {
 
   /// <summary>
   /// Replaces local history with the server-side conversation,
-  /// the copy shared with web/Telegram
+  /// the copy shared with the web UI
   /// </summary>
   private async Task PullServerHistory() {
     try {

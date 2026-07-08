@@ -12,7 +12,7 @@ MDRG AI Dialog is a [MelonLoader](https://melonwiki.xyz/) mod (version 0.4.0) fo
 | [Architecture](architecture.md) | High-level design, component map, data flow |
 | [Chat pipeline](chat-pipeline.md) | How a message travels from input popup to on-screen text; the `#!` command language; slash commands |
 | [Text-to-speech & lipsync](tts.md) | Voice playback, sentence pipelining, Live2D mouth driving |
-| [Jun webapp & Telegram](jun-webapp.md) | The shared-conversation stack: game + browser + Telegram bridge |
+| [Jun webapp](jun-webapp.md) | The shared-conversation stack: game + browser |
 | [Development guide](development.md) | Building from source, project layout, Harmony patches, adding a provider |
 
 ## What the mod does, in one paragraph
@@ -34,7 +34,6 @@ MdrgAiDialog/
 │   ├── Patches/              # Harmony patches into the game
 │   └── Utils/                # Singletons, event bus, save storage, main-thread runner…
 ├── scripts/                  # One-command installers (PowerShell, bash, batch)
-├── server/telegram-bot/      # Python Telegram bridge for the Jun webapp stack
 ├── colab_ollama_server.ipynb # Free-GPU Ollama server on Google Colab
 ├── MdrgAiDialog.csproj       # Build project (references game + MelonLoader assemblies)
 └── Directory.Build.props     # Local game path (edit this to build)

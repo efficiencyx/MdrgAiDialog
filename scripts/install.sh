@@ -212,12 +212,13 @@ write_mod_config() {
 
   if [[ -f "$config_path" ]]; then
     cp "$config_path" "$config_path.backup"
-    note "Existing config backed up to $config_path.backup"
+    note "Existing config backed up to $config_path.backup; advanced settings from it stay only in the backup."
   fi
 
   {
     echo "[General]"
     echo "UsedProvider = \"$PROVIDER\""
+    echo "ProviderConfigured = true"
     if [[ -n "$SYSTEM_PERSONA" ]]; then
       echo "SystemPersona = \"$(escape_toml "$SYSTEM_PERSONA")\""
     fi

@@ -48,7 +48,7 @@ Extends `OpenAi` with a second `HttpClient` against the native Ollama API (the U
 `src/AiProviders/Jun.cs` speaks to the [Jun webapp](https://github.com/efficiencyx/Jun) (NGINX + PHP proxy + Ollama + TTS) through the same `/api/chat.php` endpoint the web UI uses:
 
 - **Auth:** shared `JunSession` singleton (cookie-based login via `/api/auth.php`, auto re-login on 401). The same session is reused by the TTS client.
-- **Conversations:** `EnsureReadyForChat()` logs in, picks or creates a server-side conversation (`ConversationId = 0` → create and remember the id in the game save under `jun-conversation-id`), then pulls the shared history from `/api/conversations.php` — so a chat started in the browser or Telegram continues in-game.
+- **Conversations:** `EnsureReadyForChat()` logs in, picks or creates a server-side conversation (`ConversationId = 0` → create and remember the id in the game save under `jun-conversation-id`), then pulls the shared history from `/api/conversations.php` — so a chat started in the browser continues in-game.
 - **History cap:** at most 78 messages are sent per request (`chat.php` rejects > 80).
 - **System prompt:** the *server* injects its own system prompt and strips client-sent `system` roles, so the mod's `#!` command instructions do not apply. Instead, the `[A:...]` action tags emitted by the Jun finetune are translated on the fly into the game's `#!bot.*` commands by `JunActionTranslator` (`src/JunApi/JunActionTranslator.cs`) — a streaming filter that holds back text from `[` to the matching `]` (up to 300 chars) so tags split across stream chunks still parse, maps emotes (`happy`, `sad`, `angry`, `embarrassed`, …) to expression commands, and drops tags with no in-game equivalent.
 

@@ -233,7 +233,7 @@ public class ChatManager : MonoBehaviour {
     // This hides VRAM/loading/network latency completely.
     var chunksQueue = new System.Collections.Concurrent.ConcurrentQueue<string>();
     var fetchCompletion = new TaskCompletionSource<bool>();
-    var fetchTask = Task.Run(async () => {
+    _ = Task.Run(async () => {
       try {
         await foreach (var chunk in aiAdapter.SendMessage(userInput)) {
           chunksQueue.Enqueue(chunk);
@@ -266,8 +266,8 @@ public class ChatManager : MonoBehaviour {
       }
 
       // Propagate any exceptions from the background fetch
-      if (fetchTask.IsFaulted) {
-        throw fetchTask.Exception.InnerException ?? fetchTask.Exception;
+      if (fetchCompletion.Task.IsFaulted) {
+        throw fetchCompletion.Task.Exception.InnerException ?? fetchCompletion.Task.Exception;
       }
 
       // Speak the trailing partial sentence before waiting for the user's click

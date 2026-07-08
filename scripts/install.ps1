@@ -263,12 +263,13 @@ function Write-ModConfig($gameDir) {
   if (Test-Path $configPath) {
     $backupPath = "$configPath.backup"
     Copy-Item $configPath $backupPath -Force
-    Write-Note "Existing config backed up to $backupPath"
+    Write-Note "Existing config backed up to $backupPath; advanced settings from it stay only in the backup."
   }
 
   $lines = @()
   $lines += "[General]"
   $lines += "UsedProvider = `"$Provider`""
+  $lines += "ProviderConfigured = true"
   if ($SystemPersona) {
     $lines += "SystemPersona = `"$(Escape-Toml $SystemPersona)`""
   }

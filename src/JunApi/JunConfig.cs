@@ -8,7 +8,7 @@ public class JunConfig {
   // Endpoints: /api/auth.php, /api/chat.php, /api/conversations.php, /api/tts.php
   public string ApiUrl { get; set; }
 
-  // Same account as the web UI / Telegram bridge
+  // Same account as the web UI
   public string Email { get; set; }
   public string Password { get; set; }
 

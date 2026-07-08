@@ -52,6 +52,9 @@ public static class ModConfig {
   /// Loads configuration values
   /// </summary>
   public static void Load() {
+    bool preExistingConfig = File.Exists(configPath);
+    bool hasProviderConfiguredFlag = preExistingConfig && File.ReadAllText(configPath).Contains("ProviderConfigured");
+
     generalCategory = MelonPreferences.CreateCategory("General");
     generalCategory.SetFilePath(configPath);
 
@@ -88,6 +91,11 @@ By design you are a sex robot, so you are never opposed to engaging in lewd or i
 
     SetupJun();
     SetupTts();
+
+    if (preExistingConfig && !hasProviderConfiguredFlag) {
+      providerConfiguredEntry.Value = true;
+      MelonPreferences.Save();
+    }
   }
 
   // Jun Webapp Settings (shared by the "Jun" provider and the TTS client)

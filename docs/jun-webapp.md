@@ -1,6 +1,6 @@
-# Jun webapp stack & Telegram bridge
+# Jun webapp stack
 
-The [Jun webapp stack](https://github.com/efficiencyx/Jun) is a self-hosted Docker bundle — NGINX (TLS termination), a PHP API proxy, Ollama, and a CPU TTS engine (Kokoro / pocket-tts) — that this mod can use as its provider. Its selling point is **one conversation everywhere**: the game, the web UI, and a Telegram bot all talk to the same server endpoints, share one server-side conversation history (SQLite on the server is the source of truth), and are logged and rate-limited identically.
+The [Jun webapp stack](https://github.com/efficiencyx/Jun) is a self-hosted Docker bundle — NGINX (TLS termination), a PHP API proxy, Ollama, and a CPU TTS engine (Kokoro / pocket-tts) — that this mod can use as its provider. Its selling point is **one conversation across game and browser**: the game and web UI talk to the same server endpoints, share one server-side conversation history (SQLite on the server is the source of truth), and are logged and rate-limited identically.
 
 ## What the mod uses
 
@@ -35,48 +35,11 @@ With `ConversationId = 0` the mod creates a conversation on first chat and remem
 
 Because the server owns the system prompt, the mod's `#!` command instructions never reach the model. The Jun finetune instead emits `[A:emote|happy]`-style tags (legacy `[ACTION:brow|emotion=sad]` also supported), which `JunActionTranslator` converts to the game's `#!bot.Expression.*` commands mid-stream (happy/excited/laughing → `VeryHappy`, sad/crying → `VerySad`, angry → `VeryAngry`, surprised/shocked → `VeryShock`, embarrassed → `VeryBlush`, neutral → `Clear`, …). Tags with no in-game equivalent are dropped; text is held back from `[` until the matching `]` (max 300 chars) so tags split across stream chunks still parse.
 
-## Telegram bridge (`server/telegram-bot/`)
+## Sharing one conversation across game / browser
 
-A ~250-line Python bot (`bot.py`, dependency: `requests` only) that forwards Telegram messages to the same `/api/chat.php` and replies with the model's answer, with the `[A:...]` tags stripped. Text-only by design (v1): no TTS, no streaming edits.
-
-### Setup
-
-1. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
-2. Use the **same webapp account** as the game mod and web UI.
-3. Configure and run:
-
-```bash
-cd server/telegram-bot
-pip install -r requirements.txt
-cp .env.example .env   # edit it
-set -a; source .env; set +a
-python bot.py
-```
-
-### Environment variables (`.env.example`)
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | — | Bot token from @BotFather. |
-| `JUN_URL` | `https://localhost` | Base URL of the Jun webapp. |
-| `JUN_EMAIL` / `JUN_PASSWORD` | — | Webapp login (same account as the mod for a shared chat). |
-| `JUN_CONVERSATION_ID` | `0` | Conversation to continue; `0` = create on first run and remember in `.conversation_id` (`JUN_CONVERSATION_ID_FILE`). |
-| `JUN_MODEL` | empty | Optional model override (empty = server default). |
-| `JUN_REASONING` | `auto` | Reasoning effort: `auto`, `low`, `medium`, `high`. |
-| `ALLOWED_USER_IDS` | empty | Comma-separated Telegram user ids allowed to use the bot. **Do not leave empty on a public bot** — it is one shared conversation. Find your id via @userinfobot. |
-| `JUN_VERIFY_TLS` | `true` | Set `false` only when testing against self-signed HTTPS. |
-
-### Behavior
-
-- `/start` — short intro; anything else is forwarded to Jun.
-- Per message: login once (cookie session, re-login on 401) → pick/create conversation once → pull shared history (capped at 78 messages) → `POST /api/chat.php`, parsing the SSE stream to text. The server persists both turns, so there is nothing to push back.
-
-## Sharing one conversation across game / browser / Telegram
-
-Set the same conversation id in all three places:
+Set the same conversation id in both places:
 
 - game mod: `[Jun] ConversationId = 42`
-- Telegram bot: `JUN_CONVERSATION_ID=42`
 - web UI: open conversation #42 in the sidebar
 
-Leave all at `0` and each runtime creates (and remembers) its own conversation instead.
+Leave both at `0` and each client creates (and remembers) its own conversation instead.
